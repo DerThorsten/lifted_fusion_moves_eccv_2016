@@ -6,11 +6,10 @@ Run main.py. This will create a folder 'out' where intermediate result
 and the final results are stored.
 
 This is a reimplementation of the orginal source code used for the paper
-since it was very messy. More then this one, trust me =)
+since it was very messy, even more as this implementation, trust me =)
 
 
 Dependencies:
     You need a few non standart python packages:
         vigra  (https://github.com/ukoethe/vigra)
         nifty  (https://github.com/DerThorsten/nifty)
-    

@@ -15,7 +15,7 @@ testInput = {
 
 
 settings = {
-    'rootOutDir' : '/home/tbeier/src/nifty/scripts/out',
+    'rootOutDir' : 'out',
 
     ##########################################################
     # in case supervoxels are not providedragDir
@@ -45,7 +45,7 @@ settings = {
     #  classifier local
     ##########################################################
     'clfLocal' :{
-        'nRounds' : 500,
+        'nRounds' : 4,
         'maxDepth' : 3,
         'getApproxError' : True
     },
@@ -54,7 +54,7 @@ settings = {
     #  classifier lifterd
     ##########################################################
     'clfLifted' :{
-        'nRounds' : 500,
+        'nRounds' : 4,
         'maxDepth' : 3,
         'getApproxError' : True
     },

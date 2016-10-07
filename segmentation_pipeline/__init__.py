@@ -117,7 +117,7 @@ def runPipeline(trainInput, testInput, settings):
     # generate subsets 
     # ensure that these random number are the same for each run
     numpy.random.seed(42)
-    splits = generateSplits(trainRaw.shape[0], nSplits=3,frac=0.33)
+    splits = generateSplits(trainRaw.shape[0], nSplits=1,frac=0.33)
     splits.extend(generateSplits(trainRaw.shape[0], nSplits=3,frac=0.66))
     splits.extend(generateSplits(trainRaw.shape[0], nSplits=3,frac=0.50))
 
@@ -177,7 +177,7 @@ def runPipeline(trainInput, testInput, settings):
 
 
 def prepareGroundTruth(dataDict, settings):
-
+    print "prepareGroundTruth"
     rawData = dataDict['raw']
     gtData = dataDict['gt']
     outDir = dataDict['outDir']
@@ -213,7 +213,7 @@ def prepareGroundTruth(dataDict, settings):
         hfile.close()
 
 def computeSuperpixels(dataDict, settings):
-
+    print "computeSuperpixels"  
     rawData = dataDict['raw']
     spH5Path = dataDict['input']['superpixels']
     outDir = dataDict['outDir']
@@ -269,6 +269,7 @@ def computeSuperpixels(dataDict, settings):
 
 
 def getGt(dataDict, settings):
+    print "computeRag"  
     outDir = dataDict['outDir']
     if 'neuronGt' in dataDict:
         return dataDict['neuronGt']
@@ -279,7 +280,7 @@ def getGt(dataDict, settings):
         return  gt
 
 def computeRag(dataDict, settings):
-
+    print "computeRag"  
     rawData = dataDict['raw']
     superpixels = dataDict['sp']
     outDir = dataDict['outDir']
@@ -305,7 +306,7 @@ def computeRag(dataDict, settings):
         f.result()
     
 def getRagsAndSuperpixels(dataDict, settings):
-
+    #print "getRagsAndSuperpixels"
     rawData = dataDict['raw']
     outDir = dataDict['outDir']
     ragDir =  os.path.join(outDir,'rag')
@@ -326,7 +327,7 @@ def getRagsAndSuperpixels(dataDict, settings):
         return rags
 
 def computeRagFeatures(dataDict, settings):
-
+    print "computeRagFeatures"
     rawData = dataDict['raw']
     pmap    = dataDict['pmap']
 
@@ -363,7 +364,7 @@ def computeRagFeatures(dataDict, settings):
         f.result()
 
 def trainLocalRf(dataDict, settings,clfName, subset=None):
-
+    print "trainLocalRf"
     
 
     rawData = dataDict['raw']
@@ -412,7 +413,7 @@ def trainLocalRf(dataDict, settings,clfName, subset=None):
         
 
 def predictLocalRf(dataDict, settings, clfName, subset):
-
+    print "predictLocalRf"
     rawData = dataDict['raw']
     outDir = dataDict['outDir']
     ragFeatDir =  os.path.join(outDir,'ragFeatures')
@@ -453,6 +454,7 @@ def predictLocalRf(dataDict, settings, clfName, subset):
                     f5.close()
 
 def getLiftedEdges(dataDict, settings):
+    print "getLiftedEdges"
     rawData = dataDict['raw']
     outDir = dataDict['outDir']
     ragFeatDir =  os.path.join(outDir,'ragFeatures')
@@ -565,7 +567,6 @@ def computeLiftedFeaturesFromLocalProbs(dataDict, settings, clfName, subset):
                     featureFile=liftedFeatureFile)
 
 def trainLiftedClf(dataDict, settings, clfName, subset):
-
     print "trainLiftedClf"
     rawData = dataDict['raw']
     outDir = dataDict['outDir']
@@ -645,7 +646,6 @@ def trainLiftedClf(dataDict, settings, clfName, subset):
 
 
 def predictLifted(dataDict, settings, clfNames, clfWeights):
-
     print "predictLifted"
     rawData = dataDict['raw']
     outDir = dataDict['outDir']
@@ -712,6 +712,10 @@ def runLiftedMc(dataDict, settings):
     liftedProbsDir =  os.path.join(outDir,'liftedProbs')
 
     ragsAndSuperpixels = getRagsAndSuperpixels(dataDict, settings)
+    resultSegs = numpy.zeros(rawData.shape, dtype='uint64')
+
+
+    resultSegsFile = os.path.join(outDir,'resultSegmentations.h5')
 
     for sliceIndex  in range(rawData.shape[0]):
 
@@ -763,35 +767,41 @@ def runLiftedMc(dataDict, settings):
         obj.setGraphEdgesCosts(wLocal, overwrite=True)
         
 
-
-        # warm start with normal multicut
-        mcObj =  nifty.graph.multicut.multicutObjective(rag, wLocal)
-        solverFactory = mcObj.multicutIlpCplexFactory()
-        solver = solverFactory.create(mcObj)
-        visitor = mcObj.multicutVerboseVisitor()
-        argMc = solver.optimize(visitor)
-        emc = obj.evalNodeLabels(argMc)
+        # this is total overkill since we improved the lifted and local training
+        # very much compared to the paper version, so inference is easy compared 
+        # to the original models
 
 
-        # finaly optimize it
-        solverFactory = obj.liftedMulticutAndresGreedyAdditiveFactory()
+
+        # get starting point from Greedy Additive
+        solverFactory = obj.liftedMulticutGreedyAdditiveFactory()
         solver = solverFactory.create(obj)
         visitor = obj.verboseVisitor()
         arg = solver.optimize(visitor)
         eg = obj.evalNodeLabels(arg)
         
-
-        solverFactory = obj.liftedMulticutAndresKernighanLinFactory()
+        # improve starting point from Greedy Additive
+        solverFactory = obj.liftedMulticutKernighanLinFactory()
         solver = solverFactory.create(obj)
         visitor = obj.verboseVisitor()
         arg = solver.optimize(visitor, arg.copy())
         ekl = obj.evalNodeLabels(arg)
 
-        
-        print "e",emc,eg,ekl
+        # do fusion move
+        pgen = obj.watershedProposalGenerator('SEED_FROM_LOCAL')
+        solverFactory = obj.fusionMoveBasedFactory(proposalGenerator=pgen)
+        solver = solverFactory.create(obj)
+        visitor = obj.verboseVisitor()
+        argN = solver.optimize(visitor, arg.copy())
+  
 
         #projectToPixels
-        pixelData = nifty.graph.rag.projectScalarNodeDataToPixels(rag, arg.astype('uint32'))
-        
-        vigra.segShow(rawData[sliceIndex,:,:], pixelData)
-        vigra.show()
+        pixelLevelResultSeg = nifty.graph.rag.projectScalarNodeDataToPixels(rag, arg.astype('uint32'))
+        resultSegs[sliceIndex, :, :] =  pixelLevelResultSeg
+
+
+
+    # save the predictions
+    f5 = h5py.File(resultSegsFile, 'w') 
+    f5['data'] = resultSegs
+    f5.close()

@@ -38,7 +38,6 @@ def multicutFromLocalProbs(raw, rag, localProbs, liftedEdges):
             # the weight of the weight 
             wWeight = eSizes**powers
 
-            print "\n\nBETA ",beta
             w = numpy.log((1.0-clipped)/(clipped)) + numpy.log((1.0-beta)/(beta)) * wWeight
             obj = nifty.graph.multicut.multicutObjective(rag, w)
 
