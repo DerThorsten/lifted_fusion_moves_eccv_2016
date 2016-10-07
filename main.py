@@ -38,25 +38,25 @@ settings = {
     ##########################################################
     #  debug settings
     ##########################################################
-    'debug' : True,
+    'debug' : False,
 
 
     ##########################################################
     #  classifier local
     ##########################################################
     'clfLocal' :{
-        'nRounds' : 4,
+        'nRounds' : 500,
         'maxDepth' : 3,
-        'getApproxError' : True
+        'getApproxError' : False # will get slower if True
     },
 
     ##########################################################
     #  classifier lifterd
     ##########################################################
     'clfLifted' :{
-        'nRounds' : 4,
+        'nRounds' : 500,
         'maxDepth' : 3,
-        'getApproxError' : True
+        'getApproxError' : False # will get slower if True
     },
 
 
