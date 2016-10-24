@@ -13,3 +13,4 @@ Dependencies:
     You need a few non standart python packages:
         vigra  (https://github.com/ukoethe/vigra)
         nifty  (https://github.com/DerThorsten/nifty)
+        For nifty, we suggest to use https://github.com/DerThorsten/nifty/tree/v0.3-beta
